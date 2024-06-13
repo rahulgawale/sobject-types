@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { Config, SfdxConfig } from './types';
+import { saveToFile } from './utils';
 
 // Define the path to the configuration file
 const configFilePath = path.resolve(__dirname, 'config.json');
@@ -18,6 +19,10 @@ export async function getConfig() {
     return await readConfigFile(configFilePath);
   return config;
 };
+
+export async function saveConfig(config: Config) {
+  await saveToFile(configFilePath, JSON.stringify(config));
+}
 
 // sfdx config
 let sfdxConfig: SfdxConfig;

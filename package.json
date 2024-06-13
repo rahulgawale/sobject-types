@@ -1,13 +1,20 @@
 {
   "name": "@forcetrails/sobject-types",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "SObject and Field Types for Lightning Web Components TypeScript or JSDOC, to enable Type Safety and Intellisense",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rahulgawale/sobject-types"
+  },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "scope": "forcetrails",
   "scripts": {
     "build": "tsup",
     "dev": "node dist/index.js"
+  },
+  "bin": {
+    "ftypes": "./dist/index.js"
   },
   "keywords": [
     "lwc",
@@ -21,12 +28,14 @@
     "fs": "^0.0.1-security",
     "morgan": "^1.10.0",
     "path": "^0.12.7",
-    "winston": "^3.13.0"
+    "winston": "^3.13.0",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.5",
     "@salesforce/ts-types": "^2.0.9",
     "@types/node": "^20.14.2",
+    "@types/yargs": "^17.0.32",
     "tsup": "^8.1.0",
     "typescript": "^5.4.5"
   }

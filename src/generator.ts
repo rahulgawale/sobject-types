@@ -1,5 +1,4 @@
 import { PicklistResult, SObjectFieldSchema, SObjectSchema } from "./types";
-import * as path from 'path';
 
 export function generateTypes(sObjectDef: SObjectSchema) {
   const a: SObjectSchema = {
@@ -7,7 +6,6 @@ export function generateTypes(sObjectDef: SObjectSchema) {
     name: "test",
     label: "test"
   }
-  const sObjectName = path.basename(sObjectDef.name, '.json');
   const fields = sObjectDef.fields;
 
   const picklistTypes = getPicklistTypes(sObjectDef.name, fields);
@@ -15,8 +13,8 @@ export function generateTypes(sObjectDef: SObjectSchema) {
   let tsContent = `
 // picklist types
 ${picklistTypes.typeDefs.join('\n')}
-declare module "@sobject-types/${sObjectName}"{\n
-  export interface ${sObjectName} {\n`;
+declare module "@sobject-types/${sObjectDef.name}"{\n
+  export interface ${sObjectDef.name} {\n`;
 
   fields.forEach((field, i) => {
     let fieldType: string;

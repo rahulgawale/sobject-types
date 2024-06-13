@@ -60,3 +60,5 @@ export interface Config {
   outputDir: string,
   defaultusername: string
 }
+
+export const cmdName = 'ftypes';

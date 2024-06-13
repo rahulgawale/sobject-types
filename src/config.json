@@ -9,7 +9,7 @@
     "Order",
     "OrderItem",
     "Quote",
-    "QuoteLine"
+    "QuoteLineItem"
   ],
   "sfPath": "sf",
   "outputDir": "typings",
