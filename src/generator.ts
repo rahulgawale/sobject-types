@@ -88,7 +88,7 @@ function getPicklistTypes(objName: string, field: SObjectFieldSchema[]) {
 
   field.filter(f => f.type === "picklist").forEach(f => {
     let tName = `${objName}_${f.name}_Picklist`;
-    picklistTypes.typeDefs.push(`type ${tName} = ${buildPicklist(f)};`)
+    picklistTypes.typeDefs.push(`type ${tName} = ${buildPicklist(f)}${f.restrictedPicklist === true ? '' : ' | string'};`)
     picklistTypes.typeNames.set(f.name, tName);
   })
 

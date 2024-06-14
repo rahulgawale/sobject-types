@@ -1,10 +1,11 @@
 import { exec } from 'child_process';
 import * as path from 'path';
 import { getConfig } from './config';
-import { createDirectoryRecursive, saveToFile } from './utils';
+import { createDirectoryRecursive, ensureDirectoryExists, saveToFile } from './utils';
 import { Config, SObjectSchema } from './types';
 import { generateTypes } from './generator';
 import logger from './logger';
+import { scriptName } from './types';
 
 interface CommandOutPut {
   status: number,
@@ -25,7 +26,7 @@ function runCommand(command: string): Promise<any> {
         if (error.message.includes('is not recognized as an internal or external command')) {
           logger.warn('⚠️  Make sure you have installed Salesforce CLI and PATH is set for that!');
         }
-        reject("CLI Missing");
+        reject(`Salesforce CLI (SF) command error, install Salesforce CLI and verify you have put correctly authorized (using "sf org login" command) "target-org-name" in config.\nRun the below command to see the config.\n\n\t--->${scriptName} config`);
         return;
       }
 
@@ -61,8 +62,10 @@ export async function generateSobjectTypes(config: Config, obj: string) {
       logger.info("name: " + objMetadata.name);
       logger.info("#fields: " + objMetadata.fields.length);
 
-      const filename = path.resolve(__dirname, config.outputDir, obj + '.d.ts');
+      const filename = path.resolve(config.outputDir, obj + '.d.ts');
       const types = generateTypes(objMetadata);
+      // create output folder if not exists
+      ensureDirectoryExists(config.outputDir);
       await saveToFile(filename, types);
       return { success: true, message: `Successfully processed ${obj}` };
     } else {
@@ -91,21 +94,22 @@ export async function generateAllTypes() {
 export async function generateAllTypesParallel() {
   try {
     const config = await getConfig();
-    await createDirectoryRecursive(config.outputDir, true);
+    if (config) {
+      await createDirectoryRecursive(config.outputDir, true);
 
-    const promises = config.sObjects.map(async (obj) => {
-      return generateSobjectTypes(config, obj);
-    });
+      const promises = config.sObjects.map(async (obj) => {
+        return generateSobjectTypes(config, obj);
+      });
 
-    const results = await Promise.all(promises);
-    results.forEach(result => {
-      if (result.success) {
-        logger.info(result.message);
-      } else {
-        logger.error(result.message);
-      }
-    });
-
+      const results = await Promise.all(promises);
+      results.forEach(result => {
+        if (result.success) {
+          logger.info(result.message);
+        } else {
+          logger.error(result.message);
+        }
+      });
+    }
   } catch (error) {
     logger.error(`Error listing sObjects: ${(error as Error).message}`);
   }

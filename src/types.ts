@@ -19,6 +19,7 @@ export interface SObjectFieldSchema {
   calculated?: boolean
   picklistValues?: PicklistValueSchema[],
   referenceTo?: string[],
+  restrictedPicklist?: boolean,
   [key: string]: any
 }
 
@@ -58,7 +59,8 @@ export interface Config {
   sObjects: string[],
   sfPath: string,
   outputDir: string,
-  defaultusername: string
+  defaultusername: string,
+  sfdxDir: string
 }
 
-export const cmdName = 'ftypes';
+export const scriptName = 'ftypes';
