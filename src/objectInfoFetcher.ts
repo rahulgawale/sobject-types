@@ -6,11 +6,12 @@ import { Config, SObjectSchema } from './types';
 import { generateTypes } from './generator';
 import logger from './logger';
 import { scriptName } from './types';
+import { BaseTypes, BaseTypesFileName, IndexFileName } from './data/ftypesc';
 
 interface CommandOutPut {
-  status: number,
-  result: any,
-  warning: any
+  status: number;
+  result: any;
+  warning: any;
 }
 
 /**
@@ -62,10 +63,10 @@ export async function generateSobjectTypes(config: Config, obj: string) {
       logger.info("name: " + objMetadata.name);
       logger.info("#fields: " + objMetadata.fields.length);
 
-      const filename = path.resolve(config.outputDir, obj + '.d.ts');
-      const types = generateTypes(objMetadata);
+      const filename = path.resolve(config.outputDir, obj + '.ts');
+      const types = generateTypes(objMetadata, config);
       // create output folder if not exists
-      ensureDirectoryExists(config.outputDir);
+      await ensureDirectoryExists(config.outputDir);
       await saveToFile(filename, types);
       return { success: true, message: `Successfully processed ${obj}` };
     } else {
@@ -78,22 +79,11 @@ export async function generateSobjectTypes(config: Config, obj: string) {
   }
 }
 
-export async function generateAllTypes() {
-  try {
-    const config = await getConfig();
-    await createDirectoryRecursive(config.outputDir);
-
-    for (const obj of config.sObjects) {
-      generateSobjectTypes(config, obj);
-    }
-  } catch (error) {
-    logger.error(`Error listing sObjects: ${(error as Error).message}`);
-  }
-}
-
 export async function generateAllTypesParallel() {
   try {
     const config = await getConfig();
+
+
     if (config) {
       await createDirectoryRecursive(config.outputDir, true);
 
@@ -109,8 +99,26 @@ export async function generateAllTypesParallel() {
           logger.error(result.message);
         }
       });
+
+      // generate base types
+      await generateBaseTypes(config);
+      await generateIndex(config);
     }
   } catch (error) {
     logger.error(`Error listing sObjects: ${(error as Error).message}`);
   }
+}
+
+async function generateBaseTypes(config: Config) {
+  const file = path.resolve(config.outputDir, BaseTypesFileName);
+  await saveToFile(file, BaseTypes);
+}
+
+async function generateIndex(config: Config) {
+  let index = `export * from './BaseTypes';\n`;
+  config.sObjects.forEach(obj => {
+    index += `export * from './${obj}';\n`
+  })
+  const indexFile = path.resolve(config.outputDir, IndexFileName);
+  await saveToFile(indexFile, index);
 }

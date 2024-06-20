@@ -1,20 +1,21 @@
-import { PicklistResult, SObjectFieldSchema, SObjectSchema } from "./types";
+import { getConfig } from "./config";
+import { Config, PicklistResult, SObjectFieldSchema, SObjectSchema } from "./types";
 
-export function generateTypes(sObjectDef: SObjectSchema) {
-  const a: SObjectSchema = {
-    fields: [],
-    name: "test",
-    label: "test"
-  }
+export function generateTypes(sObjectDef: SObjectSchema, config: Config) {
+
   const fields = sObjectDef.fields;
 
   const picklistTypes = getPicklistTypes(sObjectDef.name, fields);
 
+  const relations = generateChildRelations(sObjectDef, config);
+
   let tsContent = `
+import { SObject } from './BaseTypes';
+${relations.imports}
 // picklist types
 ${picklistTypes.typeDefs.join('\n')}
-declare module "@sobject-types/${sObjectDef.name}"{\n
-  export interface ${sObjectDef.name} {\n`;
+
+export interface ${sObjectDef.name} extends SObject {\n`;
 
   fields.forEach((field, i) => {
     let fieldType: string;
@@ -28,11 +29,13 @@ declare module "@sobject-types/${sObjectDef.name}"{\n
     // const optional = field.nillable ? '?' : '';
     const readOnly = field.calculated || field.autoNumber ? "readonly " : "";
     tsContent += `${additionalFieldInfo(field)}\n`;
-    tsContent += `    ${readOnly}${fieldName}?: ${fieldType};\n`;
+    tsContent += `  ${readOnly}${fieldName}?: ${fieldType};\n`;
   });
 
-  tsContent += `  }
-  }\n`;
+  tsContent += relations.childrenDef;
+
+  // close object
+  tsContent += `}\n`;
 
   return tsContent;
 }
@@ -64,7 +67,7 @@ function mapFieldType(salesforceType: string) {
     // dates
     case 'date':
     case 'datetime':
-      return 'Date';
+      return 'Date | string';
 
     // other
     default:
@@ -88,7 +91,7 @@ function getPicklistTypes(objName: string, field: SObjectFieldSchema[]) {
 
   field.filter(f => f.type === "picklist").forEach(f => {
     let tName = `${objName}_${f.name}_Picklist`;
-    picklistTypes.typeDefs.push(`type ${tName} = ${buildPicklist(f)}${f.restrictedPicklist === true ? '' : ' | string'};`)
+    picklistTypes.typeDefs.push(`type ${tName} = ${buildPicklist(f)}${f.restrictedPicklist === true ? '' : ' | (string & {})'};`)
     picklistTypes.typeNames.set(f.name, tName);
   })
 
@@ -97,19 +100,47 @@ function getPicklistTypes(objName: string, field: SObjectFieldSchema[]) {
 
 function additionalFieldInfo(field: SObjectFieldSchema) {
   let moreInfo = "";
-  moreInfo += field.calculated ? "\n    @Formula" : "";
-  moreInfo += field.referenceTo && field.referenceTo.length > 0 ? `\n   @Related To ${field.referenceTo?.join(",")}` : "";
-  moreInfo += field.relationshipName ? `\n    @Relationship-Name ${field.relationshipName}` : "";
-  moreInfo += field.unique ? `\n    @Unique` : "";
-  moreInfo += field.autoNumber ? `\n    @Auto Number` : "";
+  moreInfo += field.calculated ? "\n  * @Formula" : "";
+  moreInfo += field.referenceTo && field.referenceTo.length > 0 ? `\n  * @RelatedTo - ${field.referenceTo?.join(",")}` : "";
+  moreInfo += field.relationshipName ? `\n  * @RelationshipName - ${field.relationshipName}` : "";
+  moreInfo += field.unique ? `\n  * @Unique` : "";
+  moreInfo += field.autoNumber ? `\n  * @Auto Number` : "";
 
-  const cmt = `    /**
-    @label ${field.label}
-    @type ${field.type}
-    @nillable ${field.nillable}
-    @Create ${field.createable}
-    @Update ${field.updateable}
-    ${moreInfo}*/`;
+  const cmt = ` /**
+  * @label ${field.label}
+  * @type ${field.type}
+  * @nillable ${field.nillable}
+  * @Create ${field.createable}
+  * @Update ${field.updateable}
+    ${moreInfo} */`;
 
   return cmt;
+}
+
+function generateChildRelations(object: SObjectSchema, config: Config) {
+  let childrenDef = "\n   // Child relationships\n";
+  let imports = '';
+  object.childRelationships?.forEach(child => {
+
+    if (child.relationshipName) {
+      const childType = config.sObjects.includes(child.childSObject) ?
+        child.childSObject : "SObject"
+
+      if (childType !== 'SObject' && childType !== object.name) {
+        imports += `import { ${childType} } from './${childType}';\n`;
+      }
+
+      childrenDef += `
+    /** 
+     * @Object - ${child.childSObject}
+     * @Field - ${child.field}
+     * @cascadeDelete - ${child.cascadeDelete}
+     * @restrictedDelete - ${child.restrictedDelete}
+     * */
+  ${child.relationshipName}?: ${childType}[];\n`
+
+    }
+  })
+
+  return { childrenDef, imports };
 }
